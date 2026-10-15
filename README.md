@@ -24,6 +24,15 @@ After installing Node.js, open a **new** terminal window (or restart your IDE) b
 1. Navigate to the client folder with `cd client`
 2. Run `npm install` to install the frontend dependencies. 
     - On Windows, if `npm` commands are blocked with a "running scripts is disabled" error, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` once in PowerShell. 
+### Setting up `.env`
+Grocerfy uses an LLM-powered feature that requires an OpenAI API key.
+The .env file should be located in the project root directory. To set it up:
+1. Find the .env.example file in the project root.
+2. Rename .env.example to .env by removing .example from the filename.
+3. Open .env and replace the placeholder with your OpenAI API key:
+```
+OPENAI_API_KEY=your-key-here
+```
 ### Deployment
 **Note:** The backend server **must** be started before launching the frontend server.
 #### Backend
