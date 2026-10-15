@@ -40,6 +40,8 @@ OPENAI_API_KEY=your-key-here
 2. Start the backend server using one of the following options:
 - New World and Paknsave database (Mac/Linux) `./mvnw spring-boot:run` 
 - New World and Paknsave database (Windows) `.\mvnw.cmd spring-boot:run` 
+
+    or
 - Woolworths database (Windows) `./mvnw spring-boot:run "-Dspring-boot.run.profiles=woolworths"`  
 - Woolworths database (Mac/Linux) `./mvnw spring-boot:run "-Dspring-boot.run.profiles=woolworths"` 
 3. Near the bottom of the terminal, you should see "Started GrocerfyApplication". This server runs on http://localhost:8080. You do not need to open this link to run Grocerfy
