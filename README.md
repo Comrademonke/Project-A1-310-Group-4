@@ -37,7 +37,11 @@ OPENAI_API_KEY=your-key-here
 **Note:** The backend server **must** be started before launching the frontend server.
 #### Backend
 1. From the project root, navigate to the server folder with `cd server`
-2. Start the backend server with `./mvnw spring-boot:run` (Mac/Linux) or `.\mvnw.cmd spring-boot:run` (Windows).
+2. Start the backend server using one of the following options:
+- New World and Paknsave database (Mac/Linux) `./mvnw spring-boot:run` 
+- New World and Paknsave database (Windows) `.\mvnw.cmd spring-boot:run` 
+- Woolworths database (Windows) `./mvnw spring-boot:run "-Dspring-boot.run.profiles=woolworths"`  
+- Woolworths database (Mac/Linux) `./mvnw spring-boot:run "-Dspring-boot.run.profiles=woolworths"` 
 3. Near the bottom of the terminal, you should see "Started GrocerfyApplication". This server runs on http://localhost:8080. You do not need to open this link to run Grocerfy
 #### Frontend
 1. From the project root, navigate to the client folder with `cd client`
