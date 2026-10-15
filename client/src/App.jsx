@@ -12,10 +12,11 @@ import ResultsPanel from "./components/ResultsPanel";
 import RecipeSuggestions from "./components/RecipeSuggestions";
 
 function App() {
-  const [dietaryTags, setDietaryTags] = useState([]);
-  const [allergenTags, setAllergenTags] = useState([]);
-  const [comparison, setComparison] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [dietaryTags, setDietaryTags] = useState([])
+  const [loyaltyPrograms, setLoyaltyPrograms] = useState([])
+  const [allergenTags, setAllergenTags] = useState([])
+  const [comparison, setComparison] = useState(null)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const { cartLines, setCartLines, updateLine, addLine, removeLine } =
@@ -92,11 +93,14 @@ function App() {
     )
   }
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setError("");
-    setLoading(true);
-    setComparison(null);
+  /**
+   * Compares the current basket, applying member prices for the given loyalty programmes.
+   * loyaltyPrograms is only sent when a card is selected, so the request is unchanged otherwise.
+   */
+  async function runComparison(programs) {
+    setError('')
+    setLoading(true)
+    setComparison(null)
 
     try {
       const validLines = cartLines.filter((line) => line.productId !== "");
@@ -106,7 +110,10 @@ function App() {
           productId: Number(line.productId),
           quantity: Number(line.quantity),
         })),
-      };
+      }
+      if (programs.length > 0) {
+        payload.loyaltyPrograms = programs
+      }
 
       const data = await compareBasket(payload);
 
@@ -116,6 +123,24 @@ function App() {
       setError(submitError.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    return runComparison(loyaltyPrograms)
+  }
+
+  // Flipping a card while results are showing re-runs the comparison, so the
+  // totals and cheapest store always match the toggles.
+  function toggleLoyaltyProgram(program) {
+    const nextPrograms = loyaltyPrograms.includes(program)
+      ? loyaltyPrograms.filter((current) => current !== program)
+      : [...loyaltyPrograms, program]
+
+    setLoyaltyPrograms(nextPrograms)
+    if (comparison && !loading) {
+      void runComparison(nextPrograms)
     }
   }
 
@@ -152,6 +177,8 @@ function App() {
           onUpdateLine={updateLine}
           onSubmit={handleSubmit}
           setError={setError}
+          loyaltyPrograms={loyaltyPrograms}
+          onToggleLoyaltyProgram={toggleLoyaltyProgram}
         />
       </section>
       <RecipeSuggestions cartLines={cartLines} dietaryTags={dietaryTags} />
