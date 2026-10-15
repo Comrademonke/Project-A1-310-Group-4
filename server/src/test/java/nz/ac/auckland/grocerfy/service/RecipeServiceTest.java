@@ -158,4 +158,143 @@ class RecipeServiceTest {
 
     assertThat(recipeService.suggest(request)).isEqualTo("Tomato pasta with garlic.");
   }
+
+  private String suggestWithReply(String modelReply) {
+    when(productRepository.findAllById(List.of(1L))).thenReturn(List.of(product("Bread")));
+    when(apiProxyClient.send(any())).thenReturn(new ApiProxyResponse(modelReply));
+
+    return recipeService.suggest(
+        new RecipeSuggestionRequest(List.of(new BasketItemRequest(1L, 1)), List.of()));
+  }
+
+  @Test
+  void replacesARecipeThatOnlyUsesAddedIngredients() {
+    String reply =
+        """
+        Recipe name
+        Minty Cheese Toast
+
+        Ingredients list
+        - (NOT IN BASKET) Bread
+        - (NOT IN BASKET) Cheddar cheese
+        - (NOT IN BASKET) Butter
+
+        Steps
+        1. Toast the bread and spread with butter.
+        2. Top with cheddar and grill until bubbling.
+        """;
+
+    assertThat(suggestWithReply(reply)).isEqualTo(RecipeService.NO_FOOD_MESSAGE);
+  }
+
+  @Test
+  void keepsARecipeThatUsesAtLeastOneBasketIngredient() {
+    String reply =
+        """
+        Recipe name
+        Steak with Garlic Broccoli
+
+        Ingredients list
+        - Steak
+        - (NOT IN BASKET) Garlic
+        - (NOT IN BASKET) Olive oil
+
+        Steps
+        1. Cook the steak.
+        2. Fry the garlic and serve.
+        """;
+
+    assertThat(suggestWithReply(reply)).isEqualTo(reply);
+  }
+
+  @Test
+  void keepsTheModelsOwnNoFoodReply() {
+    assertThat(suggestWithReply(RecipeService.NO_FOOD_MESSAGE))
+        .isEqualTo(RecipeService.NO_FOOD_MESSAGE);
+  }
+
+  @Test
+  void detectsAddedOnlyIngredientsWithMarkdownHeadingsAndBullets() {
+    String reply =
+        """
+        **Recipe name**
+        Yogurt Cup
+
+        **Ingredients list:**
+        * (not in basket) Plain yogurt
+        \u2022 (NOT IN BASKET) Honey
+
+        **Steps**
+        1. Spoon yogurt into a cup and drizzle with honey.
+        """;
+
+    assertThat(RecipeService.onlyUsesAddedIngredients(reply)).isTrue();
+  }
+
+  @Test
+  void ignoresIngredientMarkersOutsideTheIngredientsList() {
+    String reply =
+        """
+        Recipe name
+        Apple Slices
+
+        Ingredients list
+        - Apple
+
+        Steps
+        - (NOT IN BASKET) is not used here
+        """;
+
+    assertThat(RecipeService.onlyUsesAddedIngredients(reply)).isFalse();
+    assertThat(RecipeService.onlyUsesAddedIngredients(null)).isFalse();
+  }
+
+  @Test
+  void returnsTheNoFoodMessageWithoutCallingTheModelWhenNothingIsFood() {
+    when(productRepository.findAllById(List.of(1L, 2L)))
+        .thenReturn(
+            List.of(
+                product("Dine Perfect Portions Pate Entree With Gourmet Turkey Wet Cat Food"),
+                product("Colgate Cavity Protection Toothpaste")));
+
+    RecipeSuggestionRequest request =
+        new RecipeSuggestionRequest(
+            List.of(new BasketItemRequest(1L, 1), new BasketItemRequest(2L, 1)), List.of());
+
+    assertThat(recipeService.suggest(request)).isEqualTo(RecipeService.NO_FOOD_MESSAGE);
+    verify(apiProxyClient, never()).send(any());
+  }
+
+  @Test
+  void leavesNonFoodItemsOutOfThePrompt() {
+    when(productRepository.findAllById(List.of(1L, 2L)))
+        .thenReturn(List.of(product("Beef Steak"), product("Ajax Multipurpose Cleaner")));
+    when(apiProxyClient.send(any())).thenReturn(new ApiProxyResponse(RECIPE_TEXT));
+
+    RecipeSuggestionRequest request =
+        new RecipeSuggestionRequest(
+            List.of(new BasketItemRequest(1L, 1), new BasketItemRequest(2L, 1)), List.of());
+
+    recipeService.suggest(request);
+
+    ArgumentCaptor<ApiProxyRequest> captor = ArgumentCaptor.forClass(ApiProxyRequest.class);
+    verify(apiProxyClient).send(captor.capture());
+    assertThat(captor.getValue().userPrompt()).contains("Beef Steak").doesNotContain("Ajax");
+  }
+
+  @Test
+  void recognisesNonFoodProductNamesIgnoringCase() {
+    assertThat(RecipeService.isNonFood("Colgate Toothpaste")).isTrue();
+    assertThat(RecipeService.isNonFood("DOVE SOAP BAR")).isTrue();
+    assertThat(RecipeService.isNonFood("Whiskas Kitten Pouches")).isTrue();
+    assertThat(RecipeService.isNonFood("Finish Dishwasher Tablets")).isTrue();
+  }
+
+  @Test
+  void onlyMatchesNonFoodTermsAsWholeWords() {
+    assertThat(RecipeService.isNonFood("Hellers Hot Dog Rolls")).isFalse();
+    assertThat(RecipeService.isNonFood("Wattie's Petite Peas")).isFalse();
+    assertThat(RecipeService.isNonFood("Beef Steak")).isFalse();
+    assertThat(RecipeService.isNonFood(null)).isFalse();
+  }
 }
